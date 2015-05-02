@@ -30,6 +30,8 @@ Full a ?? _ = a
 Empty <+> o = o
 k <+> _     = k
 
+-- Cool function. Type signature is that of Applicative's <*> (apply, or 'ap'),
+-- but can use bind and Functor's map to implement.
 applyOptional :: Optional (a -> b) -> Optional a -> Optional b
 applyOptional f a = bindOptional (\f' -> mapOptional (\a' -> f' a') a) f
 
