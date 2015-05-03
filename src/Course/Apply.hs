@@ -35,8 +35,16 @@ instance Apply Id where
     Id (a -> b)
     -> Id a
     -> Id b
-  (<*>) =
-    error "todo: Course.Apply (<*>)#instance Id"
+  (<*>) (Id f) a = mapId f a
+  -- Equivalent:
+  -- (<*>) (Id f) (Id a) = Id $ f a
+  --
+  -- Equivalent, but the interesting way of using fmap and bind instead of
+  -- pattern matching on Id type. Does this means that if a data type implements
+  -- Bind and Functor, it can get the 'default' implementation of Apply for
+  -- free, given the laws hold?
+  --
+  -- (<*>) f a = bindId (\f' -> (mapId f' a)) f
 
 -- | Implement @Apply@ instance for @List@.
 --
