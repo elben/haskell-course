@@ -37,7 +37,7 @@ class Monad m where
 - [x] Course.Id
 - [x] Course.Optional
 - [x] Course.Validation
-- [ ] Course.List
+- [x] Course.List
 - [ ] Course.Functor
 - [ ] Course.Apply
 - [ ] Course.Applicative
