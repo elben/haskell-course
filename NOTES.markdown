@@ -1,5 +1,35 @@
 # Notes
 
+## Functor
+
+Note the comments on the functor implementation goes like "maps a function on
+the f functor", which seems circular. When you say "the list functor", you're
+saying "the list implementation of the Functor typeclass."
+
+The functor laws seems to enforce the idea that you shouldn't do anything
+"outside" of the supplied function. So don't reverse the list or something.
+
+As for the intution of *computation context*, the best way I see this right now
+is to see the type of fmap: (a -> b) -> (f a -> f b). Which is to say: given a
+function, fmap will give you a function (computation) that runs in the context
+of f.
+
+## List
+
+Cool to find out that `reverse` can be written with a `foldLeft`. No recursion,
+"stack"-based.
+
+For `notReverse`, which is another fun theorem, my intution was that `reverse`
+was the only possible function that would keep the properties specified. A
+proof seems not too difficult, my idea being to assume such other functino
+exist, and prove that it breaks some law. The answer's proof is based of
+induction, which makes sense.
+
+Also, `doctest`, which is quickcheck by looking at the comments, is a
+fascinating way to test. Feels almost like theorem proving (though obviously
+not since it doens't cover every possible case). Hard part seems to be defining
+useful properties.
+
 ## Optional
 
 A "binding" function seems to have a type of `(a -> m b) -> m a -> m b`. Which
@@ -38,7 +68,7 @@ class Monad m where
 - [x] Course.Optional
 - [x] Course.Validation
 - [x] Course.List
-- [ ] Course.Functor
+- [x] Course.Functor
 - [ ] Course.Apply
 - [ ] Course.Applicative
 - [ ] Course.Bind
