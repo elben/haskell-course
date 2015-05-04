@@ -1,5 +1,14 @@
 # Notes
 
+## Apply
+
+Apply is partially towards Applicative, leaving out `pure`. So Apply only gets
+<*> (apply) of type `f (a -> b) -> f a -> f b`.
+
+The most interesting thing, however, is that you can implement `<*>` purely in
+terms of `fmap` and `bind`. That is, if a data type implements Bind and
+Functor, you get Apply. See my `Id` implementation's notes.
+
 ## Functor
 
 Note the comments on the functor implementation goes like "maps a function on
@@ -69,7 +78,7 @@ class Monad m where
 - [x] Course.Validation
 - [x] Course.List
 - [x] Course.Functor
-- [ ] Course.Apply
+- [x] Course.Apply
 - [ ] Course.Applicative
 - [ ] Course.Bind
 - [ ] Course.Monad (please see this issue)

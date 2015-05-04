@@ -40,9 +40,10 @@ instance Apply Id where
   -- (<*>) (Id f) (Id a) = Id $ f a
   --
   -- Equivalent, but the interesting way of using fmap and bind instead of
-  -- pattern matching on Id type. Does this means that if a data type implements
-  -- Bind and Functor, it can get the 'default' implementation of Apply for
-  -- free, given the laws hold?
+  -- pattern matching on Id type. This means that if a data type implements Bind
+  -- and Functor, it can get the 'default' implementation of Apply for free,
+  -- given the laws hold. But in Prelude, there is no default impl, so you have
+  -- to specify still:
   --
   -- (<*>) f a = bindId (\f' -> (mapId f' a)) f
 
@@ -55,8 +56,8 @@ instance Apply List where
     List (a -> b)
     -> List a
     -> List b
-  (<*>) =
-    error "todo: Course.Apply (<*>)#instance List"
+  (f :. fs) <*> as = (map f as) ++ (fs <*> as)
+  Nil <*> _ = Nil
 
 -- | Implement @Apply@ instance for @Optional@.
 --
@@ -73,8 +74,11 @@ instance Apply Optional where
     Optional (a -> b)
     -> Optional a
     -> Optional b
-  (<*>) =
-    error "todo: Course.Apply (<*>)#instance Optional"
+  f <*> a = bindOptional (\f' -> mapOptional f' a) f
+
+  -- Equivalent implementation:
+  -- (Full f) <*> (Full a) = Full $ f a
+  -- _ <*> _ = Empty
 
 -- | Implement @Apply@ instance for reader.
 --
@@ -92,13 +96,15 @@ instance Apply Optional where
 --
 -- >>> ((*) <*> (+2)) 3
 -- 15
+--
+-- This is an interesting instance. So the `t` that is finally given by the user
+-- is used twice, once on the left side, once on the right side.
 instance Apply ((->) t) where
   (<*>) ::
     ((->) t (a -> b))
     -> ((->) t a)
     -> ((->) t b)
-  (<*>) =
-    error "todo: Course.Apply (<*>)#instance ((->) t)"
+  f <*> g = \t -> (f t) (g t)
 
 -- | Apply a binary function in the environment.
 --
@@ -119,14 +125,35 @@ instance Apply ((->) t) where
 --
 -- >>> lift2 (+) length sum (listh [4,5,6])
 -- 18
+--
+-- Note in the last example, `lift2 (+) length sum` returns a function, which
+-- then is given the list [4,5,6]. This is very cool. Uses the (-> t (a -> b))
+-- instance of Apply twice, I think.
+--
+-- length :: List a -> Int
+-- sum    :: List Int -> Int
+-- (+)    :: Num a => a -> a -> a
+--
+-- `(+) <$> length` results in a function like:
+-- (\t -> (+) length t) :: Num a => a -> (a -> a)
+--
+-- Then, `(\t -> (+) length t) <*> sum` returns a function like:
+--
+-- (\t' -> ((\t -> (+) length t) t') (sum t'))
+--
+-- That is, find the sum of the lsit, pass this answer to the function that is
+-- waiting for the list so that it can calculate the length, then add those two
+-- numbers together.
+--
 lift2 ::
   Apply f =>
   (a -> b -> c)
   -> f a
   -> f b
   -> f c
-lift2 =
-  error "todo: Course.Apply#lift2"
+-- Note: (<$>) :: (a -> z) -> f a -> f z
+--    =  (<$>) :: (a -> (b -> c)) -> f a -> f (b -> c)
+lift2 f a b = f <$> a <*> b
 
 -- | Apply a ternary function in the environment.
 --
@@ -157,8 +184,7 @@ lift3 ::
   -> f b
   -> f c
   -> f d
-lift3 =
-  error "todo: Course.Apply#lift2"
+lift3 f a b c = (lift2 f a b) <*> c
 
 -- | Apply a quaternary function in the environment.
 --
@@ -190,8 +216,7 @@ lift4 ::
   -> f c
   -> f d
   -> f e
-lift4 =
-  error "todo: Course.Apply#lift4"
+lift4 f a b c d = (lift3 f a b c) <*> d
 
 -- | Sequence, discarding the value of the first argument.
 -- Pronounced, right apply.
@@ -216,8 +241,35 @@ lift4 =
   f a
   -> f b
   -> f b
-(*>) =
-  error "todo: Course.Apply#(*>)"
+(*>) = lift2 (\_ -> id)
+-- Equivalent implementation:
+-- (*>) a b = (\_ -> id) <$> a <*> b
+--
+-- The above decomposes like this:
+-- (<$>) ::   (a -> b) -> f a -> f b
+-- Where 'b' is the type of 'id':
+-- (<$>) ::   (a -> (b -> b)) -> f a -> f (b -> b)
+-- Thus, <*> becomes the type:
+-- (<*>) :: f (b -> b) -> f a -> f b
+--
+-- So when you do:
+--
+-- [1,2,3] *> [4,5]
+--
+-- The first part, `(\_ -> id) <$> List [1,2,3]`, gets List's implementation of
+-- <$> (which is `map`). This becomes List [id,id,id] :: List (b -> b).
+--
+-- Then, we have: List [id,id,id] <*> List [4,5]. This uses the List
+-- implementation of <*>, where it does the cartesian product, and we get
+-- [4,5,4,5,4,5].
+--
+--
+-- An intuitive explanation is that we lift the function (\_ -> id) (a function
+-- that returns the id function) into a's computation context (e.g. List Int).
+-- We must do this lift of the value-ignoring function `\_ -> id` so that the
+-- left-hand argument is ignored WHILE still operating the apply of the
+-- *structure* of the left side (e.g. list of 3 things) with the right (e.g.
+-- list of 2 things), producing list of 3*2=6 things.
 
 -- | Sequence, discarding the value of the second argument.
 -- Pronounced, left apply.
@@ -242,8 +294,15 @@ lift4 =
   f b
   -> f a
   -> f b
-(<*) =
-  error "todo: Course.Apply#(<*)"
+(<*) b a = lift2 const b a
+-- Equivalent:
+-- (<*) b a = const             <$> b <*> a
+--          = (\b' -> const b') <$> b <*> a
+--
+-- In the complimentary right apply (*>), we use (\_ -> id) so that the value of
+-- the right-hand side would be used. In this case, however, we use 'const' so
+-- that the value of the left-hand side would be used as we apply through the
+-- right-hand side.
 
 -----------------------
 -- SUPPORT LIBRARIES --
