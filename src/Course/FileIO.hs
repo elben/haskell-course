@@ -62,8 +62,7 @@ the contents of c
 -- /Tip:/ use @getArgs@ and @run@
 main ::
   IO ()
-main =
-  error "todo: Course.FileIO#main"
+main = getArgs >>= (\(a :. _) -> run a)
 
 type FilePath =
   Chars
@@ -72,31 +71,38 @@ type FilePath =
 run ::
   Chars
   -> IO ()
-run =
-  error "todo: Course.FileIO#run"
+run fp = getFile fp >>= (\(_,content) ->
+                          let files = (lines content) in
+                          getFiles files >>= printFiles)
 
 getFiles ::
   List FilePath
   -> IO (List (FilePath, Chars))
-getFiles =
-  error "todo: Course.FileIO#getFiles"
+getFiles Nil = return Nil
+-- This was tricky to get right for me. I wanted to put 'return' in the first
+-- lambda, but the key is to think of it like continuation-style programming (in
+-- essense it is, since monads allow result of first computation to be inserted into
+-- second computation).
+--
+-- If it's like CPS (continuation-passing style), then we pass `p` into the very
+-- inner computation, where we can get to the rest of the list.
+getFiles (f :. fs) = getFile f >>= (\p -> (getFiles fs >>= (\ps -> return $ p :. ps)))
 
 getFile ::
   FilePath
   -> IO (FilePath, Chars)
-getFile =
-  error "todo: Course.FileIO#getFile"
+getFile fp =
+  readFile fp >>= (\chs -> return (fp, chs))
 
 printFiles ::
   List (FilePath, Chars)
   -> IO ()
-printFiles =
-  error "todo: Course.FileIO#printFiles"
+printFiles Nil = return ()
+printFiles (f :. fs) = printFile (fst f) (snd f) *> printFiles fs
 
 printFile ::
   FilePath
   -> Chars
   -> IO ()
-printFile =
-  error "todo: Course.FileIO#printFile"
-
+printFile fp chars =
+  putStrLn $ "============ " ++ fp ++ "\n" ++ chars
