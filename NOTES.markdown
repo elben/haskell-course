@@ -1,5 +1,27 @@
 # Notes
 
+## Monad
+
+`Monad` type-class is the combination of `Applicative` and `Bind`. Namely,
+`pure` from Applicative is Prelude Monad's `return`. And from Bind we get `>>=`/`=<<`.
+
+So that means Monads also get Functor's `<$>` (fmap) and Applicative's `<*>` (apply).
+
+## Bind
+
+Bind (`=<<`) has the type `(a -> f b) -> f a -> f b`. You can create `<*>` in
+terms of `=<<` and `<$>`.
+
+You can compose functions in the Bind context. This is the function `<=<`,
+pronounced *kleisli composition*. The implementation is quite simple:
+
+```
+(<=<) :: Bind f => (b -> f c) -> (a -> f b) -> a -> f c
+(<=<) f g a = f =<< (g a)
+```
+
+See Bind.hs for details.
+
 ## Applicative
 
 You can implement `<$>` (fmap form Functor) in terms of `<*>` and `pure`.
@@ -106,8 +128,8 @@ class Monad m where
 - [x] Course.Functor
 - [x] Course.Apply
 - [x] Course.Applicative
-- [ ] Course.Bind
-- [ ] Course.Monad (please see this issue)
+- [x] Course.Bind
+- [x] Course.Monad (please see this issue)
 - [ ] Course.FileIO
 - [ ] Course.State
 - [ ] Course.StateT
