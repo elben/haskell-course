@@ -1,13 +1,39 @@
 # Notes
 
+## Applicative
+
+You can implement `<$>` (fmap form Functor) in terms of `<*>` and `pure`.
+
+Lifting a function can act almost like an accumulator in a computational
+context.  For example, say you have: `(+ 10) <$> Full 3`. But say you want to
+add a bunch of numbers together. Look at the this implementation below. Notice
+the recurisve call, and 'as' as the accumulating list, which is then returned
+in the f context:
+
+```
+sequence ::
+  Applicative f =>
+  List (f a)
+  -> f (List a)
+sequence Nil = pure Nil
+sequence (f :. fs) = (\a as -> a :. as) <$> f <*> sequence fs
+```
+
 ## Apply
 
 Apply is partially towards Applicative, leaving out `pure`. So Apply only gets
 <*> (apply) of type `f (a -> b) -> f a -> f b`.
 
-The most interesting thing, however, is that you can implement `<*>` purely in
+A most interesting thing, however, is that you can implement `<*>` purely in
 terms of `fmap` and `bind`. That is, if a data type implements Bind and
 Functor, you get Apply. See my `Id` implementation's notes.
+
+To **lift** an n-nary function is to allow that function to be applied in the
+given context. For example, `(+)` is a binary function. If we want to apply
+that to two Optionals: `(+) <$> Full 3 <*> Full 4` returns `Full 7`. We can
+also lift functions that return functions: `((+) <$> sum <*> length)` returns a
+unary function taking a list: `(+) <$> sum <*> length (1 :. 2 :. 3 :. Nil)`
+returns `9`.
 
 ## Functor
 
@@ -79,7 +105,7 @@ class Monad m where
 - [x] Course.List
 - [x] Course.Functor
 - [x] Course.Apply
-- [ ] Course.Applicative
+- [x] Course.Applicative
 - [ ] Course.Bind
 - [ ] Course.Monad (please see this issue)
 - [ ] Course.FileIO
