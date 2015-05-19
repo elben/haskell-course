@@ -130,8 +130,8 @@ class Monad m where
 - [x] Course.Applicative
 - [x] Course.Bind
 - [x] Course.Monad (please see this issue)
-- [ ] Course.FileIO
-- [ ] Course.State
+- [x] Course.FileIO
+- [x] Course.State
 - [ ] Course.StateT
 - [ ] Course.Extend
 - [ ] Course.Comonad
