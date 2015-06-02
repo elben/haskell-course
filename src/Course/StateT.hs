@@ -25,6 +25,9 @@ import qualified Prelude as P
 -- >>> instance Arbitrary a => Arbitrary (List a) where arbitrary = P.fmap listh arbitrary
 
 -- | A `StateT` is a function from a state value `s` to a functor f of (a produced value `a`, and a resulting state `s`).
+--
+-- Just like `State`, note that there is only one field in the StateT (since
+-- newtype only allows one field), and that field is the function `s -> f (a, s)`.
 newtype StateT s f a =
   StateT {
     runStateT ::
@@ -36,13 +39,56 @@ newtype StateT s f a =
 --
 -- >>> runStateT ((+1) <$> (pure 2) :: StateT Int List Int) 0
 -- [(3,0)]
+--
+-- >>> runStateT ((+1) <$> (pure 2) :: StateT Int Optional Int) 0
+-- Full (3,0)
+--
+-- This implements the function `s -> (a, s)` (that is, StateT s f) as a
+-- functor, assuming `f` is a functor. But why do we write `Functor (StateT s
+-- f)` instead of `Functor (StateT s f a)`? Because this is similar to
+-- implementing, for example, `Maybe a`, we write: Functor Maybe. That way, the
+-- type `a` is not fixed to one type, since the whole point of this is to
+-- convert (a -> b).
 instance Functor f => Functor (StateT s f) where
   (<$>) ::
     (a -> b)
     -> StateT s f a
     -> StateT s f b
-  (<$>) =
-    error "todo: Course.StateT (<$>)#instance (StateT s f)"
+  (<$>) t (StateT sf) = StateT (\s -> (\(a,s') -> (t a, s')) <$> sf s)
+-- (<$>) :: (a -> b) -> f a -> f b
+
+
+
+-- How does this turn into a list of int pair?
+--
+-- `(+1) <$> (pure 2)` must be a StateT Int List Int, so must be that:
+--
+--   <$> :: (Int -> Int) -> StateT Int List Int -> StateT Int List Int
+--
+-- Thus, `(pure 2)` must use the implementation provided below, which returns
+-- this State:
+--
+--   pure 2 = StateT (\s -> return (2, s))
+--
+-- So `(+1) <$> (pure 2)` looks like:
+--
+--   StateT (\s -> return ((+1) 2, s))
+--   StateT (\s -> return (3, s))
+--
+-- Which `return` is used in `return (3, s)`? Since StateT is a function of type
+-- s -> f (a, s), and we set `f` to be List, this means that:
+--
+--   StateT (\s -> return (3, s)) :: StateT Int List Int
+--   StateT (\s -> [(3, s)])
+--
+-- And finally we run the state and get [(3,0)]. So it is the `return` that
+-- converts it to a list.
+--
+testFmap1 :: List (Int, Int)
+testFmap1 = runStateT ((+1) <$> (pure 2) :: StateT Int List Int) 0
+
+testFmap2 :: Optional (Int, Int)
+testFmap2 = runStateT ((+1) <$> (pure 2) :: StateT Int Optional Int) 0
 
 -- | Implement the `Apply` instance for @StateT s f@ given a @Bind f@.
 --
@@ -60,8 +106,7 @@ instance Bind f => Apply (StateT s f) where
     StateT s f (a -> b)
     -> StateT s f a
     -> StateT s f b
-  (<*>) =
-    error "todo: Course.StateT (<*>)#instance (StateT s f)"
+  (<*>) (StateT st1) (StateT st2) = StateT (\s -> st1 s >>= (\(t, s') -> (\(a, s'') -> (t a, s'')) <$> (st2 s')))
 
 -- | Implement the `Applicative` instance for @StateT s f@ given a @Applicative f@.
 --
@@ -74,8 +119,7 @@ instance Monad f => Applicative (StateT s f) where
   pure ::
     a
     -> StateT s f a
-  pure =
-    error "todo: Course.StateT pure#instance (StateT s f)"
+  pure a = StateT (\s -> return (a, s))
 
 -- | Implement the `Bind` instance for @StateT s f@ given a @Monad f@.
 -- Make sure the state value is passed through in `bind`.
@@ -87,9 +131,10 @@ instance Monad f => Bind (StateT s f) where
     (a -> StateT s f b)
     -> StateT s f a
     -> StateT s f b
-  (=<<) =
-    error "todo: Course.StateT (=<<)#instance (StateT s f)"
+  (=<<) f (StateT st) = StateT (\s -> st s >>= (\(a, s') -> runStateT (f a) s'))
 
+-- Because we implemented Apply, Applicative and Bind for (StateT s f), we get
+-- Monad.
 instance Monad f => Monad (StateT s f) where
 
 -- | A `State'` is `StateT` specialised to the `Id` functor.
@@ -103,8 +148,7 @@ type State' s a =
 state' ::
   (s -> (a, s))
   -> State' s a
-state' =
-  error "todo: Course.StateT#state'"
+state' st = StateT (\s -> pure $ st s)
 
 -- | Provide an unwrapper for `State'` values.
 --
@@ -114,8 +158,7 @@ runState' ::
   State' s a
   -> s
   -> (a, s)
-runState' =
-  error "todo: Course.StateT#runState'"
+runState' st s = runId $ runStateT st s
 
 -- | Run the `StateT` seeded with `s` and retrieve the resulting state.
 execT ::
@@ -123,16 +166,14 @@ execT ::
   StateT s f a
   -> s
   -> f s
-execT =
-  error "todo: Course.StateT#execT"
+execT st s = snd <$> (runStateT st s)
 
 -- | Run the `State` seeded with `s` and retrieve the resulting state.
 exec' ::
   State' s a
   -> s
   -> s
-exec' =
-  error "todo: Course.StateT#exec'"
+exec' st s = snd (runState' st s)
 
 -- | Run the `StateT` seeded with `s` and retrieve the resulting value.
 evalT ::
@@ -140,16 +181,14 @@ evalT ::
   StateT s f a
   -> s
   -> f a
-evalT =
-  error "todo: Course.StateT#evalT"
+evalT st s = fst <$> runStateT st s
 
 -- | Run the `State` seeded with `s` and retrieve the resulting value.
 eval' ::
   State' s a
   -> s
   -> a
-eval' =
-  error "todo: Course.StateT#eval'"
+eval' st s = fst (runState' st s)
 
 -- | A `StateT` where the state also distributes into the produced value.
 --
@@ -158,8 +197,7 @@ eval' =
 getT ::
   Monad f =>
   StateT s f s
-getT =
-  error "todo: Course.StateT#getT"
+getT = StateT (\s -> return (s, s))
 
 -- | A `StateT` where the resulting state is seeded with the given value.
 --
@@ -172,10 +210,12 @@ putT ::
   Monad f =>
   s
   -> StateT s f ()
-putT =
-  error "todo: Course.StateT#putT"
+putT s = StateT (\_ -> return ((), s))
 
 -- | Remove all duplicate elements in a `List`.
+--
+-- Notes:
+-- filtering :: Applicative f => (a -> f Bool) -> List a -> f (List a)
 --
 -- /Tip:/ Use `filtering` and `State'` with a @Data.Set#Set@.
 --
@@ -184,8 +224,7 @@ distinct' ::
   (Ord a, Num a) =>
   List a
   -> List a
-distinct' =
-  error "todo: Course.StateT#distinct'"
+distinct' xs = eval' (filtering (\x -> StateT (\s -> Id (S.notMember x s, S.insert x s))) xs) S.empty
 
 -- | Remove all duplicate elements in a `List`.
 -- However, if you see a value greater than `100` in the list,
@@ -198,14 +237,28 @@ distinct' =
 --
 -- >>> distinctF $ listh [1,2,3,2,1,101]
 -- Empty
+--
+-- Notes:
+-- - filtering :: Applicative f => (a -> f Bool) -> List a -> f (List a)
+-- - filtering uses the function (a -> f Bool) to check whether or not to
+-- include the item in the new list. In our case, 'f' is Optional. So if it's
+-- "Full True", for example, the item is filtered. But if it's "Empty", the
+-- Empty branch is taken by the applicative filtering function.
 distinctF ::
   (Ord a, Num a) =>
   List a
   -> Optional (List a)
-distinctF =
-  error "todo: Course.StateT#distinctF"
+distinctF xs = evalT (filtering (\x -> StateT (\s -> if x > 100 then Empty else Full (S.notMember x s, S.insert x s))) xs) S.empty
 
 -- | An `OptionalT` is a functor of an `Optional` value.
+--
+-- It has two fields in the data type, f and a.
+
+-- Equivalent:
+-- data OptionalT f a = OptionalT (f (Optional a))
+-- runOptionalT :: (OptionalT f a) -> f (Optional a)
+-- runOptionalT (OptionalT foa) = foa
+--
 data OptionalT f a =
   OptionalT {
     runOptionalT ::
@@ -217,16 +270,14 @@ data OptionalT f a =
 -- >>> runOptionalT $ (+1) <$> OptionalT (Full 1 :. Empty :. Nil)
 -- [Full 2,Empty]
 instance Functor f => Functor (OptionalT f) where
-  (<$>) =
-    error "todo: Course.StateT (<$>)#instance (OptionalT f)"
+  (<$>) f (OptionalT foa) = OptionalT $ (\oa -> f <$> oa) <$> foa
 
 -- | Implement the `Apply` instance for `OptionalT f` given a Apply f.
 --
 -- >>> runOptionalT $ OptionalT (Full (+1) :. Full (+2) :. Nil) <*> OptionalT (Full 1 :. Empty :. Nil)
 -- [Full 2,Empty,Full 3,Empty]
 instance Apply f => Apply (OptionalT f) where
-  (<*>) =
-    error "todo: Course.StateT (<*>)#instance (OptionalT f)"
+  (<*>) (OptionalT ott) (OptionalT ota) = OptionalT $ ((\ot -> (\oa -> ot <*> oa)) <$> ott) <*> ota
 
 -- | Implement the `Applicative` instance for `OptionalT f` given a Applicative f.
 instance Applicative f => Applicative (OptionalT f) where

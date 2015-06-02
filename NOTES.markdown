@@ -131,8 +131,8 @@ class Monad m where
 - [x] Course.Bind
 - [x] Course.Monad (please see this issue)
 - [x] Course.FileIO
-- [x] Course.State
-- [ ] Course.StateT
+- [x] Course.State ([ ] Check against solution)
+- [ ] Course.StateT ([ ] Check against solution)
 - [ ] Course.Extend
 - [ ] Course.Comonad
 - [ ] Course.Compose
