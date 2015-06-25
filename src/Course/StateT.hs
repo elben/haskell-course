@@ -384,9 +384,9 @@ log1 l a = Logger (l :. Nil) a
 --
 -- We need three information to be passed along as we go through each element:
 --
--- 1. Previously seen elements: Set a
--- 2. The log: Logger Chars
--- 3. The items we keep: List a
+-- 1. Previously seen elements (our StateT handles this): Set a
+-- 2. The log (our Logger handles this): Logger Chars
+-- 3. The items we keep (`filtering` handles this): List a
 --
 -- We know we need a State to keep the Set of things we've seen to be used with
 -- `filtering`. We also need Logging to keep the log. We can keep the final list

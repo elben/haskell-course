@@ -1,5 +1,50 @@
 # Notes
 
+## Extend and Comonad
+
+Comonad is the "dual" of Bind; the function arrows are flipped from Bind:
+
+```haskell
+=<< :: (a -> f b) -> f a -> f b -- Bind
+<<= :: (f a -> b) -> f a -> f b -- Extend
+
+pure   :: a -> f a
+copure :: f a -> a
+```
+
+
+[Comonad](https://wiki.haskell.org/Typeclassopedia#Comonad)
+
+## State and StateT
+
+In Haskell we often keep state by carrying values around. A `State` looks like this:
+
+```
+newtype State s a =
+  State {
+    runState ::
+      s
+      -> (a, s)
+  }
+```
+
+It runs a computation that spits out a value and a new state. The value `a` is
+derived from the context the `State` runs in. For example, to make a list
+unique, we can use `filtering` and carry around a `State` with a `Set` of all
+the seen-before elements:
+
+```haskell
+distinct :: Ord a => List a -> List a
+distinct xs = eval (filtering
+                (\x -> State (\s -> (S.notMember x s, S.insert x s))) xs) S.empty
+```
+
+We have `StateT` if we need the state and value to be wrapped in some other
+outer computation. In the Logging example in StateT exercises, we need to grab
+distinct elements AND log stuff (in a list). This requires two states to be
+carried around, the set of seen-before elements and the log. Logging provides a
+hole to put the log in, but we need to put that Logging in the StateT.
+
 ## Monad
 
 `Monad` type-class is the combination of `Applicative` and `Bind`. Namely,
@@ -131,10 +176,10 @@ class Monad m where
 - [x] Course.Bind
 - [x] Course.Monad (please see this issue)
 - [x] Course.FileIO
-- [x] Course.State ([ ] Check against solution)
-- [ ] Course.StateT ([ ] Check against solution)
-- [ ] Course.Extend
-- [ ] Course.Comonad
+- [x] Course.State
+- [x] Course.StateT
+- [x] Course.Extend
+- [x] Course.Comonad
 - [ ] Course.Compose
 - [ ] Course.Traversable
 - [ ] Course.ListZipper
