@@ -180,9 +180,11 @@ class Monad m where
 - [x] Course.StateT
 - [x] Course.Extend
 - [x] Course.Comonad
-- [ ] Course.Compose
-- [ ] Course.Traversable
+- [ ] SKIP Course.Compose
+- [x] Course.Traversable
 - [ ] Course.ListZipper
+  - [ ] Optimize against solution
+- [x] Course.Extend
 - [ ] Course.Parser (see also Course.Person for the parsing rules)
 - [ ] Course.MoreParser
 - [ ] Course.JsonParser
