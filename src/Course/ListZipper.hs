@@ -305,8 +305,10 @@ findRight f (ListZipper l x r) =
 moveLeftLoop ::
   ListZipper a
   -> ListZipper a
-moveLeftLoop =
-  error "todo: Course.ListZipper#moveLeftLoop"
+moveLeftLoop (ListZipper (l :. ls) x rs) = ListZipper ls l (x :. rs)
+moveLeftLoop (ListZipper Nil x rs) =
+  ListZipper ls x' Nil
+  where (x' :. ls) = reverse (x :. rs)
 
 -- | Move the zipper right, or if there are no elements to the right, go to the far left.
 --
@@ -318,8 +320,10 @@ moveLeftLoop =
 moveRightLoop ::
   ListZipper a
   -> ListZipper a
-moveRightLoop =
-  error "todo: Course.ListZipper#moveRightLoop"
+moveRightLoop (ListZipper ls x (r :. rs)) = ListZipper (x :. ls) r rs
+moveRightLoop (ListZipper ls x Nil) =
+  ListZipper Nil x' rs
+  where (x' :. rs) = reverse (x :. ls)
 
 -- | Move the zipper one position to the left.
 --
@@ -331,8 +335,8 @@ moveRightLoop =
 moveLeft ::
   ListZipper a
   -> MaybeListZipper a
-moveLeft =
-  error "todo: Course.ListZipper#moveLeft"
+moveLeft (ListZipper Nil _ _) = IsNotZ
+moveLeft (ListZipper (l :. ls) x rs) = IsZ $ ListZipper ls l (x :. rs)
 
 -- | Move the zipper one position to the right.
 --
@@ -344,8 +348,8 @@ moveLeft =
 moveRight ::
   ListZipper a
   -> MaybeListZipper a
-moveRight =
-  error "todo: Course.ListZipper#moveRight"
+moveRight (ListZipper _ _ Nil) = IsNotZ
+moveRight (ListZipper ls x (r :. rs)) = IsZ $ ListZipper (x :. ls) r rs
 
 -- | Swap the current focus with the value to the left of focus.
 --
@@ -357,8 +361,8 @@ moveRight =
 swapLeft ::
   ListZipper a
   -> MaybeListZipper a
-swapLeft =
-  error "todo: Course.ListZipper#swapLeft"
+swapLeft (ListZipper Nil _ _) = IsNotZ
+swapLeft (ListZipper (l :. ls) x rs) = IsZ $ ListZipper (x :. ls) l rs
 
 -- | Swap the current focus with the value to the right of focus.
 --
@@ -370,8 +374,8 @@ swapLeft =
 swapRight ::
   ListZipper a
   -> MaybeListZipper a
-swapRight =
-  error "todo: Course.ListZipper#swapRight"
+swapRight (ListZipper _ _ Nil) = IsNotZ
+swapRight (ListZipper ls x (r :. rs)) = IsZ $ ListZipper ls r (x :. rs)
 
 -- | Drop all values to the left of the focus.
 --
@@ -385,8 +389,7 @@ swapRight =
 dropLefts ::
   ListZipper a
   -> ListZipper a
-dropLefts =
-  error "todo: Course.ListZipper#dropLefts"
+dropLefts (ListZipper _ x rs) = ListZipper Nil x rs
 
 -- | Drop all values to the right of the focus.
 --
@@ -400,8 +403,7 @@ dropLefts =
 dropRights ::
   ListZipper a
   -> ListZipper a
-dropRights =
-  error "todo: Course.ListZipper#dropRights"
+dropRights (ListZipper ls x _) = ListZipper ls x Nil
 
 -- | Move the focus left the given number of positions. If the value is negative, move right instead.
 --
@@ -414,8 +416,10 @@ moveLeftN ::
   Int
   -> ListZipper a
   -> MaybeListZipper a
-moveLeftN =
-  error "todo: Course.ListZipper#moveLeftN"
+moveLeftN i lz
+  | i == 0    = IsZ lz
+  | i < 0     = moveRightN (-i) lz
+  | otherwise = moveLeftN (i-1) -<< (moveLeft lz)
 
 -- | Move the focus right the given number of positions. If the value is negative, move left instead.
 --
@@ -428,8 +432,10 @@ moveRightN ::
   Int
   -> ListZipper a
   -> MaybeListZipper a
-moveRightN =
-  error "todo: Course.ListZipper#moveRightN"
+moveRightN i lz
+  | i == 0    = IsZ lz
+  | i < 0     = moveLeftN (-i) lz
+  | otherwise = moveRightN (i-1) -<< (moveRight lz)
 
 -- | Move the focus left the given number of positions. If the value is negative, move right instead.
 -- If the focus cannot be moved, the given number of times, return the value by which it can be moved instead.
@@ -458,8 +464,15 @@ moveLeftN' ::
   Int
   -> ListZipper a
   -> Either Int (ListZipper a)
-moveLeftN' =
-  error "todo: Course.ListZipper#moveLeftN'"
+moveLeftN' i lz@(ListZipper Nil _ _) =
+  if      i > 0 then Left i
+  else if i < 0 then (moveRightN' (-i) lz)
+  else               Right lz
+moveLeftN' i lz@(ListZipper lls x rs) =
+  if      length lls < i then Left (i-1)
+  else if (i == 0)       then Right lz
+  else if i > 0          then (let (l :. ls) = lls in moveLeftN' (i-1) (ListZipper ls l (x :. rs)))
+  else                        moveRightN' (-i) lz
 
 -- | Move the focus right the given number of positions. If the value is negative, move left instead.
 -- If the focus cannot be moved, the given number of times, return the value by which it can be moved instead.
