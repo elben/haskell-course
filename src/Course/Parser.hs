@@ -642,7 +642,26 @@ instance Apply Parser where
     Parser (a -> b)
     -> Parser a
     -> Parser b
-  (<*>) pf p = p `flbindParser` (\a -> pf `flbindParser` (\f -> valueParser $ f a))
+  -- (<*>) pf p = do
+  --   f <- pf
+  --   a <- p
+  --   return $ f a
+  (<*>) pf p = pf `flbindParser` (\f -> p `flbindParser` (\a -> valueParser $ f a))
+  --
+  -- Below is a wrong implementation, where we parse `p` first before `pf. This
+  -- ordering of which parser runs first matters. The structure of the parser
+  -- changes down the road. For example, causes `string : Chars -> Parser Chars`
+  -- in MoreParser to build a parser the wrong way. `string "abc"` becomes a
+  -- parser that parses "cba".
+  --
+  -- In short, if we had flipped the ordering (like below), we would have built
+  -- up the accumulating parser (from the foldLeft in `traverse`) to first parse
+  -- the Nil value, pass the Nil result to 'c' parser, then pass that to 'b',
+  -- etc.
+  --
+  -- This wrong ordering must break one of laws of Apply.
+  --
+  -- (<*>) pf p = p `flbindParser` (\a -> pf `flbindParser` (\f -> valueParser $ f a))
 
 -- | Write an Applicative functor instance for a @Parser@.
 instance Applicative Parser where
