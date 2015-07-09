@@ -69,7 +69,7 @@ See Bind.hs for details.
 
 ## Applicative
 
-You can implement `<$>` (fmap form Functor) in terms of `<*>` and `pure`.
+You can implement `<$>` (fmap from Functor) in terms of `<*>` and `pure`.
 
 Lifting a function can act almost like an accumulator in a computational
 context.  For example, say you have: `(+ 10) <$> Full 3`. But say you want to
