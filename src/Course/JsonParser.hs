@@ -80,7 +80,7 @@ toSpecialCharacter c =
               ('\\', Backslash) :.
               Nil
   in snd <$> find ((==) c . fst) table
-  
+
 -- | Parse a JSON string. Handle double-quotes, special characters, hexadecimal characters. See http://json.org for the full list of control characters in JSON.
 --
 -- /Tip:/ Use `hex`, `fromSpecialCharacter`, `between`, `is`, `charTok`, `toSpecialCharacter`.
@@ -108,10 +108,38 @@ toSpecialCharacter c =
 --
 -- >>> isErrorResult (parse jsonString "\"\\abc\"def")
 -- True
+--
+--
 jsonString ::
   Parser Chars
 jsonString =
-  error "todo: Course.JsonParser#jsonString"
+  between
+    (is '"') (is '"')
+    (list $
+      -- Check for non-escaped chars first so that the escaped chars
+      -- will fail the whole parser if it's an invalid escape char.  For
+      -- example, (parse jsonString "\"\\abc\"def") should fail since \a is
+      -- invalid.
+      satisfyAll ((/= '"') :. (/= '\\') :. Nil)
+      ||| parseSpecialChar
+      ||| parseSpecialHex)
+
+parseSpecialHex :: Parser Char
+parseSpecialHex = is '\\' >>> hexu
+
+parseSpecialChar :: Parser Char
+parseSpecialChar = do
+  _ <- is '\\'
+  c <- satisfy isSpecialChar
+  let o = toSpecialCharacter c
+  return $ case o of
+    Full c' -> fromSpecialCharacter c'
+    _       -> ' ' -- Impossible due to check in toSpecialCharacter
+
+isSpecialChar :: Char -> Bool
+isSpecialChar c = case toSpecialCharacter c of
+                  Full _ -> True
+                  _ -> False
 
 -- | Parse a JSON rational.
 --

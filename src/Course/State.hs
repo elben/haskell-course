@@ -37,6 +37,12 @@ import qualified Data.Set as S
 -- That is, when we pattern match in a function argument like (State sf), sf is
 -- the function. But the type name "State s" means it's a State intance with
 -- the function, and the function contains the state value whose type is 's'.
+--
+-- To use `runState`, you give it a State, and an `s`, which
+-- then runs the function and returns an (a, s). Example:
+--
+-- runState (State (\s -> (0, s))) 100
+--
 newtype State s a =
   State {
     runState ::
